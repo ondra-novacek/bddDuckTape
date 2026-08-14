@@ -11,7 +11,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -31,9 +32,12 @@ input {
 .toolbar h1,
 .toolbar p,
 .results h2,
+.xrayPanel h2,
 .noteGroup h3,
+.scenarioPreview h3,
 .emptyState,
-.error {
+.error,
+.warning {
   margin: 0;
 }
 
@@ -70,7 +74,8 @@ input {
   background: #ffffff;
 }
 
-.fetchControls button {
+.fetchControls button,
+.xrayControls button {
   border: 0;
   border-radius: 6px;
   padding: 11px 16px;
@@ -79,12 +84,14 @@ input {
   cursor: pointer;
 }
 
-.fetchControls button:disabled {
+.fetchControls button:disabled,
+.xrayControls button:disabled {
   cursor: wait;
   background: #7d91c4;
 }
 
-.results {
+.results,
+.xrayPanel {
   display: grid;
   gap: 16px;
   padding-top: 24px;
@@ -140,17 +147,145 @@ input {
 }
 
 .noteItem {
-  display: grid;
-  gap: 6px;
   border: 1px solid #a7d7b5;
   border-radius: 8px;
-  padding: 14px 16px;
   background: #dcfce7;
 }
 
-.noteItem strong,
+.noteDisplay,
+.noteEditor {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.noteItem label {
+  color: #2f6b3f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.noteItem textarea {
+  width: 100%;
+  min-height: 84px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #86c997;
+  border-radius: 6px;
+  padding: 10px;
+  color: #15381f;
+  background: #f0fdf4;
+  line-height: 1.4;
+}
+
+.noteItem strong {
+  min-height: 24px;
+  white-space: pre-line;
+}
+
+.noteEditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.noteAction {
+  justify-self: start;
+  border: 1px solid #86c997;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #15381f;
+  background: #f0fdf4;
+  cursor: pointer;
+}
+
+.noteAction:hover {
+  background: #e1f8e8;
+}
+
+.noteActionPrimary {
+  border-color: #15803d;
+  color: #ffffff;
+  background: #15803d;
+}
+
+.noteActionPrimary:hover {
+  background: #166534;
+}
+
 .noteGroup h3 {
   white-space: pre-line;
+}
+
+.xrayPanel {
+  margin-top: 8px;
+  border-top: 1px solid #d9dee7;
+}
+
+.xrayControls {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(120px, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.xrayControls label {
+  font-weight: 700;
+}
+
+.xrayControls input {
+  min-width: 0;
+  border: 1px solid #b9c1cf;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.xrayControls button {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.warning {
+  border-left: 4px solid #d97706;
+  padding: 10px 12px;
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.scenarioPreview,
+.createdTests {
+  display: grid;
+  gap: 12px;
+  padding-left: 24px;
+  margin: 0;
+}
+
+.scenarioPreview li {
+  display: grid;
+  gap: 8px;
+}
+
+.scenarioPreview h3 {
+  color: #273244;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.scenarioPreview pre {
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid #cfd6e3;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+  color: #1f2937;
+  white-space: pre-wrap;
+}
+
+.createdTests {
+  color: #14532d;
+  font-weight: 700;
 }
 
 @media (max-width: 640px) {
@@ -158,5 +293,13 @@ input {
   .resultHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .xrayControls {
+    grid-template-columns: 1fr;
+  }
+
+  .xrayControls button {
+    grid-column: 1;
   }
 }
