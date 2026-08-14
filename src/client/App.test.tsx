@@ -22,13 +22,42 @@ describe('App', () => {
         return new Response(
           JSON.stringify({
             boardId: 'board-123',
-            count: 1,
+            count: 2,
+            groupCount: 1,
             notes: [
               {
                 id: 'note-1',
-                content: '<p>Scenario: Login</p>',
-                plainText: 'Scenario: Login',
+                content: '<p>Login</p>',
+                plainText: 'Login',
+                fillColor: 'blue',
                 position: { x: 1, y: 2 }
+              },
+              {
+                id: 'note-2',
+                content: '<p>Given a valid user</p>',
+                plainText: 'Given a valid user',
+                fillColor: 'green',
+                position: { x: 1, y: 100 }
+              }
+            ],
+            groups: [
+              {
+                header: {
+                  id: 'note-1',
+                  content: '<p>Login</p>',
+                  plainText: 'Login',
+                  fillColor: 'blue',
+                  position: { x: 1, y: 2 }
+                },
+                items: [
+                  {
+                    id: 'note-2',
+                    content: '<p>Given a valid user</p>',
+                    plainText: 'Given a valid user',
+                    fillColor: 'green',
+                    position: { x: 1, y: 100 }
+                  }
+                ]
               }
             ]
           }),
@@ -47,15 +76,24 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Scenario: Login')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
     });
-    expect(screen.getByText('1 sticky note')).toBeInTheDocument();
+    expect(screen.getByText('1 group from 2 blue/green sticky notes')).toBeInTheDocument();
+    expect(screen.getByText('Given a valid user')).toBeInTheDocument();
     expect(logSpy).toHaveBeenCalledWith('Fetched Miro sticky notes', [
       {
         id: 'note-1',
-        content: '<p>Scenario: Login</p>',
-        plainText: 'Scenario: Login',
+        content: '<p>Login</p>',
+        plainText: 'Login',
+        fillColor: 'blue',
         position: { x: 1, y: 2 }
+      },
+      {
+        id: 'note-2',
+        content: '<p>Given a valid user</p>',
+        plainText: 'Given a valid user',
+        fillColor: 'green',
+        position: { x: 1, y: 100 }
       }
     ]);
   });

@@ -31,6 +31,7 @@ input {
 .toolbar h1,
 .toolbar p,
 .results h2,
+.noteGroup h3,
 .emptyState,
 .error {
   margin: 0;
@@ -108,6 +109,28 @@ input {
   color: #7f1d1d;
 }
 
+.groupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.noteGroup {
+  display: grid;
+  gap: 12px;
+}
+
+.noteGroup h3 {
+  border: 1px solid #7ca5ec;
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #102a56;
+  background: #dbeafe;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
 .noteList {
   display: grid;
   gap: 10px;
@@ -119,15 +142,15 @@ input {
 .noteItem {
   display: grid;
   gap: 6px;
-  border: 1px solid #d9dee7;
+  border: 1px solid #a7d7b5;
   border-radius: 8px;
   padding: 14px 16px;
-  background: #ffffff;
+  background: #dcfce7;
 }
 
-.noteItem span {
-  color: #5b6472;
-  font-size: 14px;
+.noteItem strong,
+.noteGroup h3 {
+  white-space: pre-line;
 }
 
 @media (max-width: 640px) {

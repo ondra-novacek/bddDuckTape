@@ -15,6 +15,7 @@ describe('fetchStickyNotesFromMiro', () => {
                 id: 'note-1',
                 type: 'sticky_note',
                 data: { content: '<p>First</p>' },
+                style: { fillColor: 'blue' },
                 position: { x: 1, y: 2 }
               }
             ],
@@ -31,6 +32,7 @@ describe('fetchStickyNotesFromMiro', () => {
               id: 'note-2',
               type: 'sticky_note',
               data: { content: '<p>Second</p>' },
+              style: { fillColor: 'green' },
               position: { x: 3, y: 4 }
             }
           ]

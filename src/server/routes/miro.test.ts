@@ -27,7 +27,15 @@ describe('Miro routes', () => {
         id: 'note-1',
         content: '<p>Scenario</p>',
         plainText: 'Scenario',
+        fillColor: 'blue',
         position: { x: 1, y: 2 }
+      },
+      {
+        id: 'note-2',
+        content: '<p>Given cart</p>',
+        plainText: 'Given cart',
+        fillColor: 'green',
+        position: { x: 1, y: 100 }
       }
     ]);
     const app = createApp({ miroAccessToken: 'token' }, fetcher);
@@ -37,13 +45,42 @@ describe('Miro routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       boardId: 'board-123',
-      count: 1,
+      count: 2,
+      groupCount: 1,
       notes: [
         {
           id: 'note-1',
           content: '<p>Scenario</p>',
           plainText: 'Scenario',
+          fillColor: 'blue',
           position: { x: 1, y: 2 }
+        },
+        {
+          id: 'note-2',
+          content: '<p>Given cart</p>',
+          plainText: 'Given cart',
+          fillColor: 'green',
+          position: { x: 1, y: 100 }
+        }
+      ],
+      groups: [
+        {
+          header: {
+            id: 'note-1',
+            content: '<p>Scenario</p>',
+            plainText: 'Scenario',
+            fillColor: 'blue',
+            position: { x: 1, y: 2 }
+          },
+          items: [
+            {
+              id: 'note-2',
+              content: '<p>Given cart</p>',
+              plainText: 'Given cart',
+              fillColor: 'green',
+              position: { x: 1, y: 100 }
+            }
+          ]
         }
       ]
     });

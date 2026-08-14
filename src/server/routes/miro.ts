@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { AppConfig } from '../config';
+import { groupStickyNotes } from '../miro/group';
 import { fetchStickyNotesFromMiro } from '../miro/client';
 
 type StickyNotesFetcher = typeof fetchStickyNotesFromMiro;
@@ -28,8 +29,11 @@ export function createMiroRouter(
 
     try {
       const notes = await fetcher({ boardId, accessToken: config.miroAccessToken });
-      console.log(`Fetched ${notes.length} sticky notes from Miro board ${boardId}`);
-      res.json({ boardId, count: notes.length, notes });
+      const groups = groupStickyNotes(notes);
+      console.log(
+        `Fetched ${notes.length} blue/green sticky notes in ${groups.length} groups from Miro board ${boardId}`
+      );
+      res.json({ boardId, count: notes.length, groupCount: groups.length, notes, groups });
     } catch (error) {
       const status =
         typeof (error as { status?: unknown }).status === 'number'

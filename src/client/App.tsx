@@ -4,21 +4,30 @@ interface StickyNote {
   id: string;
   content: string;
   plainText: string;
+  fillColor: string | null;
   position: {
     x: number | null;
     y: number | null;
   };
 }
 
+interface StickyNoteGroup {
+  header: StickyNote;
+  items: StickyNote[];
+}
+
 interface StickyNotesResponse {
   boardId: string;
   count: number;
+  groupCount: number;
   notes: StickyNote[];
+  groups: StickyNoteGroup[];
 }
 
 export function App() {
   const [boardId, setBoardId] = useState('');
   const [notes, setNotes] = useState<StickyNote[]>([]);
+  const [groups, setGroups] = useState<StickyNoteGroup[]>([]);
   const [status, setStatus] = useState('Idle');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,9 +50,13 @@ export function App() {
       const result = body as StickyNotesResponse;
       console.log('Fetched Miro sticky notes', result.notes);
       setNotes(result.notes);
-      setStatus(`${result.count} ${result.count === 1 ? 'sticky note' : 'sticky notes'}`);
+      setGroups(result.groups);
+      setStatus(
+        `${result.groupCount} ${result.groupCount === 1 ? 'group' : 'groups'} from ${result.count} blue/green sticky notes`
+      );
     } catch (fetchError) {
       setNotes([]);
+      setGroups([]);
       setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch sticky notes');
       setStatus('Fetch failed');
     } finally {
@@ -86,19 +99,31 @@ export function App() {
           <span>{status}</span>
         </div>
         {error ? <p className="error">{error}</p> : null}
-        {notes.length > 0 ? (
-          <ul className="noteList">
-            {notes.map((note) => (
-              <li key={note.id} className="noteItem">
-                <strong>{note.plainText || '(empty sticky note)'}</strong>
-                <span>
-                  {note.id} | x: {note.position.x ?? 'n/a'}, y: {note.position.y ?? 'n/a'}
-                </span>
-              </li>
+        {groups.length > 0 ? (
+          <div className="groupGrid">
+            {groups.map((group) => (
+              <article key={group.header.id} className="noteGroup">
+                <h3>{group.header.plainText || '(empty header)'}</h3>
+                {group.items.length > 0 ? (
+                  <ul className="noteList">
+                    {group.items.map((note) => (
+                      <li key={note.id} className="noteItem">
+                        <strong>{note.plainText || '(empty sticky note)'}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="emptyState">No green sticky notes in this group.</p>
+                )}
+              </article>
             ))}
-          </ul>
+          </div>
         ) : (
-          <p className="emptyState">No sticky notes loaded.</p>
+          <p className="emptyState">
+            {notes.length > 0
+              ? 'No blue header groups found for the green sticky notes.'
+              : 'No sticky notes loaded.'}
+          </p>
         )}
       </section>
     </main>
