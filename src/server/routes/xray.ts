@@ -63,7 +63,10 @@ export function createXrayRouter(
         {
           clientId: config.xrayClientId,
           clientSecret: config.xrayClientSecret,
-          baseUrl: config.xrayBaseUrl ?? 'https://xray.cloud.getxray.app'
+          baseUrl: config.xrayBaseUrl ?? 'https://xray.cloud.getxray.app',
+          jiraBaseUrl: config.jiraBaseUrl,
+          jiraEmail: config.jiraEmail,
+          jiraApiToken: config.jiraApiToken
         },
         {
           testSetKey,

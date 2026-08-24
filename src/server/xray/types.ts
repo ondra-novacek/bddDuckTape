@@ -2,6 +2,9 @@ export interface XrayConfig {
   clientId: string;
   clientSecret: string;
   baseUrl: string;
+  jiraBaseUrl?: string;
+  jiraEmail?: string;
+  jiraApiToken?: string;
 }
 
 export interface XrayScenarioInput {

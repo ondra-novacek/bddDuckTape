@@ -67,7 +67,10 @@ describe('Xray routes', () => {
         miroAccessToken: 'miro-token',
         xrayClientId: 'client-id',
         xrayClientSecret: 'client-secret',
-        xrayBaseUrl: 'https://xray.example'
+        xrayBaseUrl: 'https://xray.example',
+        jiraBaseUrl: 'https://levelworks.atlassian.net',
+        jiraEmail: 'tester@example.com',
+        jiraApiToken: 'jira-token'
       },
       undefined,
       exporter
@@ -89,7 +92,10 @@ describe('Xray routes', () => {
       {
         clientId: 'client-id',
         clientSecret: 'client-secret',
-        baseUrl: 'https://xray.example'
+        baseUrl: 'https://xray.example',
+        jiraBaseUrl: 'https://levelworks.atlassian.net',
+        jiraEmail: 'tester@example.com',
+        jiraApiToken: 'jira-token'
       },
       {
         testSetKey: 'LW1-28042',
