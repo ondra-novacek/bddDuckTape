@@ -31,10 +31,7 @@ textarea {
 
 .toolbar h1,
 .toolbar p,
-.results h2,
 .xrayPanel h2,
-.noteGroup h3,
-.scenarioPreview h3,
 .emptyState,
 .error,
 .warning {
@@ -90,7 +87,6 @@ textarea {
   background: #7d91c4;
 }
 
-.results,
 .xrayPanel {
   display: grid;
   gap: 16px;
@@ -114,107 +110,6 @@ textarea {
   padding: 10px 12px;
   background: #fee2e2;
   color: #7f1d1d;
-}
-
-.groupGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.noteGroup {
-  display: grid;
-  gap: 12px;
-}
-
-.noteGroup h3 {
-  border: 1px solid #7ca5ec;
-  border-radius: 8px;
-  padding: 14px 16px;
-  color: #102a56;
-  background: #dbeafe;
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.noteList {
-  display: grid;
-  gap: 10px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.noteItem {
-  border: 1px solid #a7d7b5;
-  border-radius: 8px;
-  background: #dcfce7;
-}
-
-.noteDisplay,
-.noteEditor {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-}
-
-.noteItem label {
-  color: #2f6b3f;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.noteItem textarea {
-  width: 100%;
-  min-height: 84px;
-  box-sizing: border-box;
-  resize: vertical;
-  border: 1px solid #86c997;
-  border-radius: 6px;
-  padding: 10px;
-  color: #15381f;
-  background: #f0fdf4;
-  line-height: 1.4;
-}
-
-.noteItem strong {
-  min-height: 24px;
-  white-space: pre-line;
-}
-
-.noteEditActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.noteAction {
-  justify-self: start;
-  border: 1px solid #86c997;
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: #15381f;
-  background: #f0fdf4;
-  cursor: pointer;
-}
-
-.noteAction:hover {
-  background: #e1f8e8;
-}
-
-.noteActionPrimary {
-  border-color: #15803d;
-  color: #ffffff;
-  background: #15803d;
-}
-
-.noteActionPrimary:hover {
-  background: #166534;
-}
-
-.noteGroup h3 {
-  white-space: pre-line;
 }
 
 .xrayPanel {
@@ -266,20 +161,26 @@ textarea {
   gap: 8px;
 }
 
-.scenarioPreview h3 {
+.scenarioPreview label {
   color: #273244;
-  font-size: 17px;
-  line-height: 1.3;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.scenarioPreview pre {
-  overflow-x: auto;
-  margin: 0;
+.scenarioPreview input,
+.scenarioPreview textarea {
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid #cfd6e3;
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px 12px;
   background: #ffffff;
   color: #1f2937;
+}
+
+.scenarioPreview textarea {
+  min-height: 120px;
+  resize: vertical;
   white-space: pre-wrap;
 }
 

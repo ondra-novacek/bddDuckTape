@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { flattenGroupsForXray } from '../shared/xrayScenarios';
+import { useState } from 'react';
+import { flattenGroupsForXray, type ParsedXrayScenario } from '../shared/xrayScenarios';
 
 interface StickyNote {
   id: string;
@@ -33,11 +33,7 @@ interface CreatedXrayTest {
 
 export function App() {
   const [boardId, setBoardId] = useState('');
-  const [notes, setNotes] = useState<StickyNote[]>([]);
-  const [groups, setGroups] = useState<StickyNoteGroup[]>([]);
-  const [editingNoteIds, setEditingNoteIds] = useState<Set<string>>(() => new Set());
-  const [draftNoteText, setDraftNoteText] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState('Idle');
+  const [xrayScenarios, setXrayScenarios] = useState<ParsedXrayScenario[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [testSetKey, setTestSetKey] = useState('');
@@ -46,7 +42,6 @@ export function App() {
   const [createdTests, setCreatedTests] = useState<CreatedXrayTest[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
-  const xrayScenarios = useMemo(() => flattenGroupsForXray(groups), [groups]);
   const hasInvalidXrayScenario = xrayScenarios.some((scenario) => scenario.errors.length > 0);
   const canExportToXray =
     testSetKey.trim().length > 0 &&
@@ -57,8 +52,6 @@ export function App() {
   async function fetchStickyNotes() {
     setIsLoading(true);
     setError('');
-    setStatus('Fetching sticky notes');
-
     try {
       const response = await fetch(
         `/api/miro/sticky-notes?boardId=${encodeURIComponent(boardId.trim())}`
@@ -71,66 +64,44 @@ export function App() {
 
       const result = body as StickyNotesResponse;
       console.log('Fetched Miro sticky notes', result.notes);
-      setNotes(result.notes);
-      setGroups(result.groups);
-      setEditingNoteIds(new Set());
-      setDraftNoteText({});
+      setXrayScenarios(flattenGroupsForXray(result.groups));
       setXrayError('');
       setCreatedTests([]);
       setXrayStatus('Not exported');
-      setStatus(
-        `${result.groupCount} ${result.groupCount === 1 ? 'group' : 'groups'} from ${result.count} blue/green sticky notes`
-      );
     } catch (fetchError) {
-      setNotes([]);
-      setGroups([]);
-      setEditingNoteIds(new Set());
-      setDraftNoteText({});
+      setXrayScenarios([]);
       setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch sticky notes');
-      setStatus('Fetch failed');
     } finally {
       setIsLoading(false);
     }
   }
 
-  function updateGreenNoteText(noteId: string, plainText: string) {
-    setGroups((currentGroups) =>
-      currentGroups.map((group) => ({
-        ...group,
-        items: group.items.map((item) => (item.id === noteId ? { ...item, plainText } : item))
-      }))
+  function updateXrayScenario(
+    sourceId: string,
+    field: 'summary' | 'gherkin',
+    value: string
+  ) {
+    setXrayScenarios((currentScenarios) =>
+      currentScenarios.map((scenario) => {
+        if (scenario.sourceId !== sourceId) return scenario;
+
+        const summary = field === 'summary' ? value : scenario.summary;
+        const gherkin = field === 'gherkin' ? value : scenario.gherkin;
+        const errors: string[] = [];
+
+        if (!summary.trim()) {
+          errors.push('Add a summary in the header field.');
+        }
+
+        if (!gherkin.trim()) {
+          errors.push('Add Gherkin in the free-form text field.');
+        }
+
+        return { ...scenario, summary, gherkin, errors };
+      })
     );
-    setNotes((currentNotes) =>
-      currentNotes.map((note) => (note.id === noteId ? { ...note, plainText } : note))
-    );
-  }
-
-  function startEditingNote(note: StickyNote) {
-    setEditingNoteIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      nextIds.add(note.id);
-      return nextIds;
-    });
-    setDraftNoteText((currentDrafts) => ({ ...currentDrafts, [note.id]: note.plainText }));
-  }
-
-  function cancelEditingNote(noteId: string) {
-    setEditingNoteIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      nextIds.delete(noteId);
-      return nextIds;
-    });
-    setDraftNoteText((currentDrafts) => {
-      const { [noteId]: _discardedDraft, ...remainingDrafts } = currentDrafts;
-      return remainingDrafts;
-    });
-  }
-
-  function saveEditingNote(noteId: string) {
-    updateGreenNoteText(noteId, draftNoteText[noteId] ?? '');
     setCreatedTests([]);
     setXrayStatus('Not exported');
-    cancelEditingNote(noteId);
   }
 
   async function createInXray() {
@@ -202,83 +173,6 @@ export function App() {
         </form>
       </section>
 
-      <section className="results" aria-live="polite">
-        <div className="resultHeader">
-          <h2>Sticky notes</h2>
-          <span>{status}</span>
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        {groups.length > 0 ? (
-          <div className="groupGrid">
-            {groups.map((group) => (
-              <article key={group.header.id} className="noteGroup">
-                <h3>{group.header.plainText || '(empty header)'}</h3>
-                {group.items.length > 0 ? (
-                  <ul className="noteList">
-                    {group.items.map((note) => (
-                      <li key={note.id} className="noteItem">
-                        {editingNoteIds.has(note.id) ? (
-                          <div className="noteEditor">
-                            <textarea
-                              id={`note-${note.id}`}
-                              aria-label="Edit sticky note text"
-                              value={draftNoteText[note.id] ?? ''}
-                              onChange={(event) =>
-                                setDraftNoteText((currentDrafts) => ({
-                                  ...currentDrafts,
-                                  [note.id]: event.target.value
-                                }))
-                              }
-                              rows={Math.max(3, (draftNoteText[note.id] ?? '').split('\n').length)}
-                              autoFocus
-                            />
-                            <div className="noteEditActions">
-                              <button
-                                className="noteAction noteActionPrimary"
-                                type="button"
-                                onClick={() => saveEditingNote(note.id)}
-                              >
-                                Save
-                              </button>
-                              <button
-                                className="noteAction"
-                                type="button"
-                                onClick={() => cancelEditingNote(note.id)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="noteDisplay">
-                            <strong>{note.plainText || '(empty sticky note)'}</strong>
-                            <button
-                              className="noteAction"
-                              type="button"
-                              onClick={() => startEditingNote(note)}
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="emptyState">No green sticky notes in this group.</p>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="emptyState">
-            {notes.length > 0
-              ? 'No blue header groups found for the green sticky notes.'
-              : 'No sticky notes loaded.'}
-          </p>
-        )}
-      </section>
-
       <section className="xrayPanel" aria-labelledby="xray-title">
         <div className="resultHeader">
           <h2 id="xray-title">Xray preview</h2>
@@ -300,20 +194,39 @@ export function App() {
         </div>
 
         <p className="warning">Create-only export: running this again creates duplicate Xray Tests.</p>
+        {error ? <p className="error">{error}</p> : null}
         {xrayError ? <p className="error">{xrayError}</p> : null}
 
         {xrayScenarios.length > 0 ? (
           <ol className="scenarioPreview">
             {xrayScenarios.map((scenario, index) => (
               <li key={scenario.sourceId}>
-                <h3>
-                  {index + 1}. {scenario.summary || '(missing summary)'}
-                </h3>
+                <label htmlFor={`scenario-${scenario.sourceId}-summary`}>
+                  Scenario {index + 1} header
+                </label>
+                <input
+                  id={`scenario-${scenario.sourceId}-summary`}
+                  aria-label={`Xray scenario ${index + 1} header`}
+                  value={scenario.summary}
+                  onChange={(event) =>
+                    updateXrayScenario(scenario.sourceId, 'summary', event.target.value)
+                  }
+                  placeholder="Test summary"
+                />
+                <label htmlFor={`scenario-${scenario.sourceId}-gherkin`}>Gherkin</label>
+                <textarea
+                  id={`scenario-${scenario.sourceId}-gherkin`}
+                  aria-label={`Xray scenario ${index + 1} Gherkin`}
+                  value={scenario.gherkin}
+                  onChange={(event) =>
+                    updateXrayScenario(scenario.sourceId, 'gherkin', event.target.value)
+                  }
+                  rows={Math.max(4, scenario.gherkin.split('\n').length)}
+                  placeholder="Feature, Scenario, Given, When, Then..."
+                />
                 {scenario.errors.length > 0 ? (
                   <p className="error">{scenario.errors.join(' ')}</p>
-                ) : (
-                  <pre>{scenario.gherkin}</pre>
-                )}
+                ) : null}
               </li>
             ))}
           </ol>

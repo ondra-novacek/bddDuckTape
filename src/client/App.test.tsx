@@ -15,7 +15,7 @@ describe('App', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('uses the typed board ID and displays fetched sticky notes', async () => {
+  it('edits Xray scenario headers and free-form Gherkin before exporting', async () => {
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const target = String(url);
       if (target === '/api/miro/sticky-notes?boardId=board-123') {
@@ -96,25 +96,17 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
-    });
-    expect(screen.getByText('1 group from 2 blue/green sticky notes')).toBeInTheDocument();
-    expect(screen.getAllByText(/Successful login/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Scenario: user logs in/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Xray preview')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Edit sticky note text')).not.toBeInTheDocument();
+    const headerEditor = await screen.findByLabelText('Xray scenario 1 header');
+    const gherkinEditor = screen.getByLabelText('Xray scenario 1 Gherkin');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(headerEditor).toHaveValue('Successful login');
+    expect(gherkinEditor).toHaveValue('Scenario: user logs in');
+    expect(screen.queryByRole('heading', { name: 'Login' })).not.toBeInTheDocument();
 
-    const itemEditor = screen.getByLabelText('Edit sticky note text');
-    await userEvent.clear(itemEditor);
-    await userEvent.type(itemEditor, 'Edited login{enter}Scenario: edited user logs in');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    expect(screen.queryByDisplayValue('Edited login\nScenario: edited user logs in')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Edited login/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Scenario: edited user logs in/).length).toBeGreaterThan(0);
+    await userEvent.clear(headerEditor);
+    await userEvent.type(headerEditor, 'Edited login');
+    await userEvent.clear(gherkinEditor);
+    await userEvent.type(gherkinEditor, 'Scenario: edited user logs in');
 
     await userEvent.type(
       screen.getByLabelText('Xray Test Set key or URL'),
@@ -127,17 +119,6 @@ describe('App', () => {
     });
     expect(screen.getByText('PROJ-1')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
-    await userEvent.clear(screen.getByLabelText('Edit sticky note text'));
-    await userEvent.type(
-      screen.getByLabelText('Edit sticky note text'),
-      'Given a cancelled user'
-    );
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.queryByDisplayValue('Given a cancelled user')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Edited login/).length).toBeGreaterThan(0);
-    expect(screen.queryByText('Given a cancelled user')).not.toBeInTheDocument();
     expect(logSpy).toHaveBeenCalledWith('Fetched Miro sticky notes', [
       {
         id: 'note-1',
