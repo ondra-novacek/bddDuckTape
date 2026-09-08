@@ -31,6 +31,22 @@ interface CreatedXrayTest {
   key: string;
 }
 
+function extractMiroBoardId(value: string): string {
+  const trimmedValue = value.trim();
+
+  try {
+    const url = new URL(trimmedValue);
+    const isMiroDomain = url.hostname === 'miro.com' || url.hostname.endsWith('.miro.com');
+    const boardId = isMiroDomain
+      ? url.pathname.match(/^\/app\/board\/([^/]+)/)?.[1]
+      : undefined;
+
+    return boardId ? decodeURIComponent(boardId) : trimmedValue;
+  } catch {
+    return trimmedValue;
+  }
+}
+
 export function App() {
   const [boardId, setBoardId] = useState('');
   const [xrayScenarios, setXrayScenarios] = useState<ParsedXrayScenario[]>([]);
@@ -54,7 +70,7 @@ export function App() {
     setError('');
     try {
       const response = await fetch(
-        `/api/miro/sticky-notes?boardId=${encodeURIComponent(boardId.trim())}`
+        `/api/miro/sticky-notes?boardId=${encodeURIComponent(extractMiroBoardId(boardId))}`
       );
       const body = (await response.json()) as StickyNotesResponse | { error?: string };
 
@@ -158,13 +174,13 @@ export function App() {
             void fetchStickyNotes();
           }}
         >
-          <label htmlFor="boardId">Miro board ID</label>
+          <label htmlFor="boardId">Miro board ID or URL</label>
           <div className="fetchControls">
             <input
               id="boardId"
               value={boardId}
               onChange={(event) => setBoardId(event.target.value)}
-              placeholder="uXjV..."
+              placeholder="uXjV... or https://miro.com/app/board/uXjV.../"
             />
             <button type="submit" disabled={isLoading}>
               {isLoading ? 'Fetching...' : 'Fetch sticky notes'}

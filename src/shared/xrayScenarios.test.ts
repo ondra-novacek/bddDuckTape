@@ -24,6 +24,18 @@ describe('parseXrayScenario', () => {
       errors: ['Add Gherkin after the summary line.']
     });
   });
+
+  it.each([
+    ['  GIVEN a valid user', 'GIVEN a valid user'],
+    ['  when they submit valid credentials', 'when they submit valid credentials']
+  ])('leaves a %s first line in the gherkin body and keeps the summary empty', (firstLine, gherkin) => {
+    expect(parseXrayScenario('note-3', `\n${firstLine}\nThen access is granted\n`)).toEqual({
+      sourceId: 'note-3',
+      summary: '',
+      gherkin: `${gherkin}\nThen access is granted`,
+      errors: ['Add a summary on the first line.']
+    });
+  });
 });
 
 describe('flattenGroupsForXray', () => {

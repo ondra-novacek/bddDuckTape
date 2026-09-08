@@ -91,7 +91,7 @@ describe('App', () => {
 
     render(<App />);
 
-    const input = screen.getByLabelText('Miro board ID');
+    const input = screen.getByLabelText('Miro board ID or URL');
     await userEvent.type(input, 'board-123');
 
     await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
@@ -135,5 +135,58 @@ describe('App', () => {
         position: { x: 1, y: 100 }
       }
     ]);
+  });
+
+  it('extracts a board ID from a Miro board URL before fetching sticky notes', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          boardId: 'uXjVLzqAbCd=',
+          count: 0,
+          groupCount: 0,
+          notes: [],
+          groups: []
+        }),
+        { status: 200 }
+      );
+    }) as typeof fetch;
+
+    render(<App />);
+
+    await userEvent.type(
+      screen.getByLabelText('Miro board ID or URL'),
+      'https://miro.com/app/board/uXjVLzqAbCd=/?share_link_id=123'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/miro/sticky-notes?boardId=uXjVLzqAbCd%3D'
+    );
+  });
+
+  it('does not extract a board ID from a lookalike domain', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ boardId: '', count: 0, groupCount: 0, notes: [], groups: [] }), {
+        status: 200
+      });
+    }) as typeof fetch;
+
+    render(<App />);
+
+    await userEvent.type(
+      screen.getByLabelText('Miro board ID or URL'),
+      'https://evilmiro.com/app/board/not-a-miro-board/'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/miro/sticky-notes?boardId=https%3A%2F%2Fevilmiro.com%2Fapp%2Fboard%2Fnot-a-miro-board%2F'
+    );
   });
 });
