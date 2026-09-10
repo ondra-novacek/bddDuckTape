@@ -167,6 +167,127 @@ describe('App', () => {
     );
   });
 
+  it('shows only changed Gherkin lines with diff colors before applying an AI suggestion', async () => {
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/miro/sticky-notes?boardId=board-123') {
+        return new Response(
+          JSON.stringify({
+            boardId: 'board-123',
+            count: 2,
+            groupCount: 1,
+            notes: [],
+            groups: [
+              {
+                header: {
+                  id: 'note-1',
+                  content: '<p>Login</p>',
+                  plainText: 'Login',
+                  fillColor: 'blue',
+                  position: { x: 1, y: 2 }
+                },
+                items: [
+                  {
+                    id: 'note-2',
+                    content: '<p>Scenario</p>',
+                    plainText: 'Customer login\nScenario: customer logs in\nGiven an active user',
+                    fillColor: 'green',
+                    position: { x: 1, y: 100 }
+                  }
+                ]
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (target === '/api/ai/polish' && init?.method === 'POST') {
+        expect(JSON.parse(String(init.body))).toEqual({
+          field: 'gherkin',
+          summary: 'Customer login',
+          gherkin: 'Scenario: customer logs in\nGiven an active user'
+        });
+        return new Response(
+          JSON.stringify({ proposal: 'Scenario: customer logs in\nGiven an existing account\nGiven an active user' }),
+          { status: 200 }
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'unexpected url' }), { status: 500 });
+    }) as typeof fetch;
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+
+    const gherkin = await screen.findByLabelText('Xray scenario 1 Gherkin');
+    await userEvent.click(screen.getByRole('button', { name: 'Polish Gherkin for scenario 1' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Review AI suggestion' });
+    expect(screen.getByRole('heading', { name: 'Changes' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Current' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Proposed' })).not.toBeInTheDocument();
+    expect(screen.getByText('Scenario: customer logs in').closest('.diffLine')).toHaveClass('diffUnchanged');
+    expect(screen.getByText('Given an existing account').closest('.diffLine')).toHaveClass('diffAdded');
+    expect(screen.getByText('Given an active user').closest('.diffLine')).toHaveClass('diffUnchanged');
+    expect(screen.getByLabelText('Diff line 1')).toHaveTextContent('1');
+    expect(screen.getByLabelText('Diff line 2')).toHaveTextContent('2');
+    expect(screen.getByLabelText('Diff line 3')).toHaveTextContent('3');
+    expect(dialog).toHaveTextContent('Scenario: customer logs in');
+    expect(gherkin).toHaveValue('Scenario: customer logs in\nGiven an active user');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Accept changes' }));
+    expect(gherkin).toHaveValue('Scenario: customer logs in\nGiven an existing account\nGiven an active user');
+    expect(screen.queryByRole('dialog', { name: 'Review AI suggestion' })).not.toBeInTheDocument();
+  });
+
+  it('opens the AI review modal while the suggestion is loading', async () => {
+    let resolveSuggestion: ((response: Response) => void) | undefined;
+    const suggestionResponse = new Promise<Response>((resolve) => {
+      resolveSuggestion = resolve;
+    });
+
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url) === '/api/miro/sticky-notes?boardId=board-123') {
+        return new Response(
+          JSON.stringify({
+            boardId: 'board-123',
+            count: 2,
+            groupCount: 1,
+            notes: [],
+            groups: [
+              {
+                header: {
+                  id: 'note-1', content: '<p>Login</p>', plainText: 'Login', fillColor: 'blue', position: { x: 1, y: 2 }
+                },
+                items: [
+                  {
+                    id: 'note-2', content: '<p>Scenario</p>', plainText: 'succesful login\nScenario: customer logs in', fillColor: 'green', position: { x: 1, y: 100 }
+                  }
+                ]
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+
+      return suggestionResponse;
+    }) as typeof fetch;
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Polish summary for scenario 1' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Review AI suggestion' })).toHaveTextContent(
+      'Creating suggestion…'
+    );
+
+    resolveSuggestion?.(new Response(JSON.stringify({ proposal: 'Successful login' }), { status: 200 }));
+  });
+
   it('does not extract a board ID from a lookalike domain', async () => {
     globalThis.fetch = vi.fn(async () => {
       return new Response(JSON.stringify({ boardId: '', count: 0, groupCount: 0, notes: [], groups: [] }), {

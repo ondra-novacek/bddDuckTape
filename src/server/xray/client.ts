@@ -238,6 +238,8 @@ export async function createXrayTestsInTestSet(
 
   for (const [index, scenario] of input.scenarios.entries()) {
     try {
+      // Temporary diagnostic: remove after validating exported Gherkin.
+      console.log(`${projectKey}-X${index + 1}`, JSON.stringify({ gherkin: scenario.gherkin }));
       const body = (await graphql(
         config,
         token,

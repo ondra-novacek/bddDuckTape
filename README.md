@@ -14,11 +14,13 @@ XRAY_BASE_URL=https://xray.cloud.getxray.app
 JIRA_BASE_URL=https://levelworks.atlassian.net
 JIRA_EMAIL=replace-with-atlassian-account-email
 JIRA_API_TOKEN=replace-with-jira-api-token
+GEMINI_API_KEY=replace-with-gemini-api-key
 ```
 
 The Miro token needs board read access for the board you want to inspect.
 The Xray credentials need permission to create Tests and add Tests to the target Test Set.
 The Jira credentials are used as a fallback to resolve a visible issue key, such as `LW1-30482`, to Jira's internal numeric issue ID when Xray's Test Set JQL lookup does not find it directly.
+`GEMINI_API_KEY` is optional and enables per-field AI suggestions in the Xray preview. Create the key in Google AI Studio; it is sent only from the local server to Gemini.
 
 ## Run
 

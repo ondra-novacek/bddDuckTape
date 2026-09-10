@@ -6,6 +6,7 @@ export interface AppConfig {
   jiraBaseUrl?: string;
   jiraEmail?: string;
   jiraApiToken?: string;
+  geminiApiKey?: string;
 }
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -16,6 +17,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     xrayBaseUrl: env.XRAY_BASE_URL ?? 'https://xray.cloud.getxray.app',
     jiraBaseUrl: env.JIRA_BASE_URL,
     jiraEmail: env.JIRA_EMAIL,
-    jiraApiToken: env.JIRA_API_TOKEN
+    jiraApiToken: env.JIRA_API_TOKEN,
+    geminiApiKey: env.GEMINI_API_KEY
   };
 }
