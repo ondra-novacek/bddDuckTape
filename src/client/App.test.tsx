@@ -297,6 +297,50 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Fill .*missing header/ })).not.toBeInTheDocument();
   });
 
+  it('shows an AI error above the scenario list', async () => {
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url) === '/api/miro/sticky-notes?boardId=board-123') {
+        return new Response(
+          JSON.stringify({
+            boardId: 'board-123',
+            count: 1,
+            groupCount: 1,
+            notes: [],
+            groups: [
+              {
+                header: {
+                  id: 'note-1', content: '<p>Login</p>', plainText: 'Login', fillColor: 'blue', position: { x: 1, y: 2 }
+                },
+                items: [
+                  {
+                    id: 'note-2', content: '<p>Scenario</p>', plainText: 'Customer login\nScenario: customer logs in', fillColor: 'green', position: { x: 1, y: 100 }
+                  }
+                ]
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (String(url) === '/api/ai/polish' && init?.method === 'POST') {
+        return new Response(JSON.stringify({ error: 'AI request limit reached.' }), { status: 429 });
+      }
+
+      return new Response(JSON.stringify({ error: 'unexpected url' }), { status: 500 });
+    }) as typeof fetch;
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Polish summary for scenario 1' }));
+
+    const error = await screen.findByRole('alert');
+    const scenarios = screen.getByRole('list');
+    expect(error).toHaveTextContent('AI request limit reached.');
+    expect(error.compareDocumentPosition(scenarios) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('shows only changed Gherkin lines with diff colors before applying an AI suggestion', async () => {
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const target = String(url);

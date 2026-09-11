@@ -433,6 +433,7 @@ export function App() {
               </div>
             </section>
           ) : null}
+          {aiError ? <p className="notice noticeError" role="alert">{aiError}</p> : null}
           <ol className="scenarioPreview">
             {xrayScenarios.map((scenario, index) => (
               <li key={scenario.sourceId} className="scenarioCard">
@@ -532,7 +533,6 @@ export function App() {
           >
             +
           </button>
-          {aiError ? <p className="notice noticeError" role="alert">{aiError}</p> : null}
 
         </section>
       ) : null}
