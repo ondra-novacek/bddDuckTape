@@ -77,11 +77,15 @@ export function App() {
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [aiError, setAiError] = useState('');
   const [polishingField, setPolishingField] = useState<string | null>(null);
+  const [isFillingHeaders, setIsFillingHeaders] = useState(false);
   const [scenarioToFocus, setScenarioToFocus] = useState<string | null>(null);
   const nextManualScenarioId = useRef(0);
 
   const hasInvalidXrayScenario = xrayScenarios.some((scenario) => scenario.errors.length > 0);
   const canSubmitToJira = xrayScenarios.length > 0 && !hasInvalidXrayScenario && !isExporting;
+  const scenariosWithMissingHeaders = xrayScenarios.filter(
+    (scenario) => !scenario.summary.trim() && scenario.gherkin.trim()
+  );
 
   async function fetchStickyNotes() {
     setIsLoading(true);
@@ -253,6 +257,56 @@ export function App() {
     setAiSuggestion(null);
   }
 
+  async function fillMissingHeaders() {
+    const scenariosToFill = xrayScenarios.filter(
+      (scenario) => !scenario.summary.trim() && scenario.gherkin.trim()
+    );
+    if (scenariosToFill.length === 0) return;
+
+    setIsFillingHeaders(true);
+    setAiError('');
+
+    const suggestions = await Promise.all(
+      scenariosToFill.map(async (scenario) => {
+        try {
+          const response = await fetch('/api/ai/polish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field: 'summary', summary: scenario.summary, gherkin: scenario.gherkin })
+          });
+          const body = (await response.json()) as { proposal?: string; error?: string };
+          if (!response.ok || !body.proposal) throw new Error(body.error ?? 'AI could not create a suggestion.');
+          return { sourceId: scenario.sourceId, proposal: body.proposal };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    const successfulSuggestions = new Map(
+      suggestions.filter((suggestion): suggestion is { sourceId: string; proposal: string } => suggestion !== null)
+        .map((suggestion) => [suggestion.sourceId, suggestion.proposal])
+    );
+
+    if (successfulSuggestions.size > 0) {
+      setXrayScenarios((currentScenarios) =>
+        currentScenarios.map((scenario) => {
+          const summary = !scenario.summary.trim() ? successfulSuggestions.get(scenario.sourceId) : undefined;
+          return summary
+            ? { ...scenario, summary, errors: scenario.errors.filter((error) => error !== 'Add a summary in the header field.') }
+            : scenario;
+        })
+      );
+      setCreatedTests([]);
+      setCreatedTestSet(null);
+    }
+
+    if (successfulSuggestions.size !== scenariosToFill.length) {
+      setAiError('Some headers could not be generated. Please try again or fill them manually.');
+    }
+    setIsFillingHeaders(false);
+  }
+
   async function createInXray() {
     if (!testSetKey.trim()) {
       setXrayError('Enter an Xray Test Set key or URL before submitting.');
@@ -325,6 +379,19 @@ export function App() {
       {xrayScenarios.length > 0 ? (
         <section className="xrayPanel" aria-label="Xray scenarios">
           <div className="previewActions">
+            {scenariosWithMissingHeaders.length > 0 ? (
+              <button
+                type="button"
+                className="secondaryButton fillHeadersAction"
+                aria-label={`Fill ${scenariosWithMissingHeaders.length} missing ${scenariosWithMissingHeaders.length === 1 ? 'header' : 'headers'}`}
+                disabled={isFillingHeaders}
+                onClick={() => void fillMissingHeaders()}
+              >
+                {isFillingHeaders
+                  ? `Filling ${scenariosWithMissingHeaders.length} ${scenariosWithMissingHeaders.length === 1 ? 'header' : 'headers'}...`
+                  : `✨ Fill ${scenariosWithMissingHeaders.length} missing ${scenariosWithMissingHeaders.length === 1 ? 'header' : 'headers'}`}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={!canSubmitToJira}
