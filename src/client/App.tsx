@@ -66,16 +66,15 @@ export function App() {
   const [xrayError, setXrayError] = useState('');
   const [createdTests, setCreatedTests] = useState<CreatedXrayTest[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isJiraModalOpen, setIsJiraModalOpen] = useState(false);
+  const [openScenarioMenu, setOpenScenarioMenu] = useState<string | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [aiError, setAiError] = useState('');
   const [polishingField, setPolishingField] = useState<string | null>(null);
 
   const hasInvalidXrayScenario = xrayScenarios.some((scenario) => scenario.errors.length > 0);
-  const canExportToXray =
-    testSetKey.trim().length > 0 &&
-    xrayScenarios.length > 0 &&
-    !hasInvalidXrayScenario &&
-    !isExporting;
+  const canSubmitToJira = xrayScenarios.length > 0 && !hasInvalidXrayScenario && !isExporting;
 
   async function fetchStickyNotes() {
     setIsLoading(true);
@@ -135,6 +134,34 @@ export function App() {
     setXrayStatus('Not exported');
   }
 
+  function deleteXrayScenario(sourceId: string) {
+    setXrayScenarios((currentScenarios) =>
+      currentScenarios.filter((scenario) => scenario.sourceId !== sourceId)
+    );
+    setOpenScenarioMenu(null);
+    setCreatedTests([]);
+    setXrayStatus('Not exported');
+  }
+
+  function moveXrayScenario(sourceId: string, direction: -1 | 1) {
+    setXrayScenarios((currentScenarios) => {
+      const currentIndex = currentScenarios.findIndex((scenario) => scenario.sourceId === sourceId);
+      const nextIndex = currentIndex + direction;
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= currentScenarios.length) {
+        return currentScenarios;
+      }
+
+      const reorderedScenarios = [...currentScenarios];
+      [reorderedScenarios[currentIndex], reorderedScenarios[nextIndex]] = [
+        reorderedScenarios[nextIndex],
+        reorderedScenarios[currentIndex]
+      ];
+      return reorderedScenarios;
+    });
+    setCreatedTests([]);
+    setXrayStatus('Not exported');
+  }
+
   useEffect(() => {
     if (!aiSuggestion) return;
 
@@ -145,6 +172,35 @@ export function App() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [aiSuggestion]);
+
+  useEffect(() => {
+    if (!openScenarioMenu) return;
+
+    function closeMenuOnOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Element && event.target.closest('[data-scenario-options]')) return;
+      setOpenScenarioMenu(null);
+    }
+
+    function closeMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpenScenarioMenu(null);
+    }
+
+    window.addEventListener('pointerdown', closeMenuOnOutsideClick);
+    window.addEventListener('keydown', closeMenuOnEscape);
+    return () => {
+      window.removeEventListener('pointerdown', closeMenuOnOutsideClick);
+      window.removeEventListener('keydown', closeMenuOnEscape);
+    };
+  }, [openScenarioMenu]);
+
+  useEffect(() => {
+    function updateBackToTopVisibility() {
+      setShowBackToTop(window.scrollY > 320);
+    }
+
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+    return () => window.removeEventListener('scroll', updateBackToTopVisibility);
+  }, []);
 
   async function requestAiSuggestion(scenario: ParsedXrayScenario, field: ScenarioField) {
     const fieldId = `${scenario.sourceId}-${field}`;
@@ -189,6 +245,11 @@ export function App() {
   }
 
   async function createInXray() {
+    if (!testSetKey.trim()) {
+      setXrayError('Enter an Xray Test Set key or URL before submitting.');
+      return;
+    }
+
     setIsExporting(true);
     setXrayError('');
     setCreatedTests([]);
@@ -220,6 +281,7 @@ export function App() {
       setXrayStatus(
         `Created ${result.created.length} ${result.created.length === 1 ? 'Xray Test' : 'Xray Tests'}`
       );
+      setIsJiraModalOpen(false);
     } catch (exportError) {
       setXrayError(exportError instanceof Error ? exportError.message : 'Xray export failed');
       setXrayStatus('Xray export failed');
@@ -230,11 +292,7 @@ export function App() {
 
   return (
     <main className="appShell">
-      <section className="toolbar" aria-labelledby="page-title">
-        <div>
-          <h1 id="page-title">BDD Duck Tape</h1>
-          <p>Fetch sticky notes from a Miro board.</p>
-        </div>
+      <section className="toolbar" aria-label="Miro board">
         <form
           className="fetchForm"
           onSubmit={(event) => {
@@ -242,53 +300,94 @@ export function App() {
             void fetchStickyNotes();
           }}
         >
-          <label htmlFor="boardId">Miro board ID or URL</label>
           <div className="fetchControls">
             <input
               id="boardId"
+              aria-label="Miro board ID or URL"
               value={boardId}
               onChange={(event) => setBoardId(event.target.value)}
-              placeholder="uXjV... or https://miro.com/app/board/uXjV.../"
+              placeholder="Board URL"
             />
             <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Fetching...' : 'Fetch sticky notes'}
+              {isLoading ? 'Fetching...' : 'Fetch notes'}
             </button>
           </div>
+          {error ? <p className="notice noticeError" role="alert">{error}</p> : null}
         </form>
       </section>
 
-      <section className="xrayPanel" aria-labelledby="xray-title">
-        <div className="resultHeader">
-          <h2 id="xray-title">Xray preview</h2>
-          <span>{xrayStatus}</span>
-        </div>
-
-        <div className="xrayControls">
-          <label htmlFor="testSetKey">Xray Test Set key or URL</label>
-          <input
-            id="testSetKey"
-            value={testSetKey}
-            onChange={(event) => setTestSetKey(event.target.value)}
-            placeholder="LW1-28042"
-          />
-
-          <button type="button" disabled={!canExportToXray} onClick={() => void createInXray()}>
-            {isExporting ? 'Creating...' : 'Create in Xray'}
-          </button>
-        </div>
-
-        <p className="warning">Create-only export: running this again creates duplicate Xray Tests.</p>
-        {error ? <p className="error">{error}</p> : null}
-        {xrayError ? <p className="error">{xrayError}</p> : null}
-        {aiError ? <p className="error">{aiError}</p> : null}
-
-        {xrayScenarios.length > 0 ? (
+      {xrayScenarios.length > 0 ? (
+        <section className="xrayPanel" aria-label="Xray scenarios">
+          <div className="previewActions">
+            {createdTests.length > 0 ? <p className="exportSuccess">{xrayStatus}</p> : null}
+            <button
+              type="button"
+              disabled={!canSubmitToJira}
+              onClick={() => {
+                setXrayError('');
+                setIsJiraModalOpen(true);
+              }}
+            >
+              Submit to Jira
+            </button>
+          </div>
           <ol className="scenarioPreview">
             {xrayScenarios.map((scenario, index) => (
               <li key={scenario.sourceId}>
-                <label htmlFor={`scenario-${scenario.sourceId}-summary`}>
-                  Scenario {index + 1} header
-                </label>
+                <div className="scenarioHeader">
+                  <label htmlFor={`scenario-${scenario.sourceId}-summary`}>
+                    Scenario {index + 1} header
+                  </label>
+                  <div className="scenarioActions">
+                    <button
+                      type="button"
+                      className="scenarioAction"
+                      aria-label={`Move scenario ${index + 1} up`}
+                      title="Move up"
+                      disabled={index === 0}
+                      onClick={() => moveXrayScenario(scenario.sourceId, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="scenarioAction"
+                      aria-label={`Move scenario ${index + 1} down`}
+                      title="Move down"
+                      disabled={index === xrayScenarios.length - 1}
+                      onClick={() => moveXrayScenario(scenario.sourceId, 1)}
+                    >
+                      ↓
+                    </button>
+                    <div className="scenarioOptions" data-scenario-options>
+                      <button
+                        type="button"
+                        className="scenarioAction"
+                        aria-label={`Scenario ${index + 1} options`}
+                        aria-haspopup="menu"
+                        aria-expanded={openScenarioMenu === scenario.sourceId}
+                        onClick={() =>
+                          setOpenScenarioMenu((currentMenu) =>
+                            currentMenu === scenario.sourceId ? null : scenario.sourceId
+                          )
+                        }
+                      >
+                        ⋯
+                      </button>
+                      {openScenarioMenu === scenario.sourceId ? (
+                        <div className="scenarioMenu" role="menu">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => deleteXrayScenario(scenario.sourceId)}
+                          >
+                            Delete scenario
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
                 <div className="fieldWithAiAction">
                   <input
                     id={`scenario-${scenario.sourceId}-summary`}
@@ -334,23 +433,51 @@ export function App() {
                   </button>
                 </div>
                 {scenario.errors.length > 0 ? (
-                  <p className="error">{scenario.errors.join(' ')}</p>
+                  <p className="notice noticeError fieldNotice">{scenario.errors.join(' ')}</p>
                 ) : null}
               </li>
             ))}
           </ol>
-        ) : (
-          <p className="emptyState">Load green sticky notes to preview Xray scenarios.</p>
-        )}
+          {aiError ? <p className="notice noticeError" role="alert">{aiError}</p> : null}
 
-        {createdTests.length > 0 ? (
-          <ul className="createdTests">
-            {createdTests.map((test) => (
-              <li key={test.issueId}>{test.key}</li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
+          {createdTests.length > 0 ? (
+            <ul className="createdTests">
+              {createdTests.map((test) => (
+                <li key={test.issueId}>{test.key}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+      {isJiraModalOpen ? (
+        <div className="modalBackdrop" role="presentation">
+          <section className="jiraSubmitModal" role="dialog" aria-modal="true" aria-labelledby="jira-submit-title">
+            <div className="modalHeader">
+              <h2 id="jira-submit-title">Submit to Jira</h2>
+              <button type="button" className="closeModal" aria-label="Close Jira submission" onClick={() => setIsJiraModalOpen(false)}>
+                ×
+              </button>
+            </div>
+            <p className="notice noticeWarning">Create-only export: running this again creates duplicate Xray Tests.</p>
+            <label htmlFor="testSetKey">Xray Test Set key or URL</label>
+            <input
+              id="testSetKey"
+              value={testSetKey}
+              onChange={(event) => setTestSetKey(event.target.value)}
+              placeholder="LW1-28042"
+            />
+            {xrayError ? <p className="notice noticeError" role="alert">{xrayError}</p> : null}
+            <div className="modalActions">
+              <button type="button" className="secondaryButton" onClick={() => setIsJiraModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" disabled={isExporting} onClick={() => void createInXray()}>
+                {isExporting ? 'Submitting...' : 'Submit tests'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {aiSuggestion ? (
         <div className="modalBackdrop" role="presentation">
           <section className="aiReviewModal" role="dialog" aria-modal="true" aria-labelledby="ai-review-title">
@@ -379,6 +506,16 @@ export function App() {
             )}
           </section>
         </div>
+      ) : null}
+      {showBackToTop ? (
+        <button
+          type="button"
+          className="backToTop"
+          aria-label="Back to top"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          ↑
+        </button>
       ) : null}
     </main>
   );

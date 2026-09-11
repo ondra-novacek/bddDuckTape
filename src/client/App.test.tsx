@@ -1,11 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 describe('App', () => {
   const originalFetch = globalThis.fetch;
-  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -15,7 +14,7 @@ describe('App', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('edits Xray scenario headers and free-form Gherkin before exporting', async () => {
+  it('shows the preview only after loading and submits edited scenarios through the Jira modal', async () => {
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const target = String(url);
       if (target === '/api/miro/sticky-notes?boardId=board-123') {
@@ -38,6 +37,13 @@ describe('App', () => {
                 plainText: 'Successful login\nScenario: user logs in',
                 fillColor: 'green',
                 position: { x: 1, y: 100 }
+              },
+              {
+                id: 'note-3',
+                content: '<p>Given a locked user</p>',
+                plainText: 'Unsuccessful login\nScenario: user is denied access',
+                fillColor: 'green',
+                position: { x: 1, y: 200 }
               }
             ],
             groups: [
@@ -56,6 +62,13 @@ describe('App', () => {
                     plainText: 'Successful login\nScenario: user logs in',
                     fillColor: 'green',
                     position: { x: 1, y: 100 }
+                  },
+                  {
+                    id: 'note-3',
+                    content: '<p>Given a locked user</p>',
+                    plainText: 'Unsuccessful login\nScenario: user is denied access',
+                    fillColor: 'green',
+                    position: { x: 1, y: 200 }
                   }
                 ]
               }
@@ -92,49 +105,51 @@ describe('App', () => {
     render(<App />);
 
     const input = screen.getByLabelText('Miro board ID or URL');
+    expect(screen.queryByRole('button', { name: 'Submit to Jira' })).not.toBeInTheDocument();
     await userEvent.type(input, 'board-123');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
 
-    const headerEditor = await screen.findByLabelText('Xray scenario 1 header');
+    expect(await screen.findByLabelText('Xray scenario 1 header')).toHaveValue('Successful login');
+    expect(screen.getByLabelText('Xray scenario 2 header')).toHaveValue('Unsuccessful login');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Move scenario 2 up' }));
+    expect(screen.getByLabelText('Xray scenario 1 header')).toHaveValue('Unsuccessful login');
+    expect(screen.getByLabelText('Xray scenario 2 header')).toHaveValue('Successful login');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Scenario 1 options' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Delete scenario' }));
+
+    const headerEditor = screen.getByLabelText('Xray scenario 1 header');
     const gherkinEditor = screen.getByLabelText('Xray scenario 1 Gherkin');
 
     expect(headerEditor).toHaveValue('Successful login');
     expect(gherkinEditor).toHaveValue('Scenario: user logs in');
     expect(screen.queryByRole('heading', { name: 'Login' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Xray scenario 2 header')).not.toBeInTheDocument();
 
     await userEvent.clear(headerEditor);
+    expect(screen.getByText('Add a summary in the header field.')).toHaveClass('fieldNotice');
     await userEvent.type(headerEditor, 'Edited login');
     await userEvent.clear(gherkinEditor);
     await userEvent.type(gherkinEditor, 'Scenario: edited user logs in');
 
+    await userEvent.click(screen.getByRole('button', { name: 'Submit to Jira' }));
+    const jiraDialog = await screen.findByRole('dialog', { name: 'Submit to Jira' });
+    expect(jiraDialog).toHaveTextContent(
+      'Create-only export: running this again creates duplicate Xray Tests.'
+    );
     await userEvent.type(
       screen.getByLabelText('Xray Test Set key or URL'),
       'https://levelworks.atlassian.net/browse/LW1-28042'
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Create in Xray' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit tests' }));
 
     await waitFor(() => {
       expect(screen.getByText('Created 1 Xray Test')).toBeInTheDocument();
     });
     expect(screen.getByText('PROJ-1')).toBeInTheDocument();
 
-    expect(logSpy).toHaveBeenCalledWith('Fetched Miro sticky notes', [
-      {
-        id: 'note-1',
-        content: '<p>Login</p>',
-        plainText: 'Login',
-        fillColor: 'blue',
-        position: { x: 1, y: 2 }
-      },
-      {
-        id: 'note-2',
-        content: '<p>Given a valid user</p>',
-        plainText: 'Successful login\nScenario: user logs in',
-        fillColor: 'green',
-        position: { x: 1, y: 100 }
-      }
-    ]);
   });
 
   it('extracts a board ID from a Miro board URL before fetching sticky notes', async () => {
@@ -157,7 +172,7 @@ describe('App', () => {
       screen.getByLabelText('Miro board ID or URL'),
       'https://miro.com/app/board/uXjVLzqAbCd=/?share_link_id=123'
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -219,7 +234,7 @@ describe('App', () => {
 
     render(<App />);
     await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
 
     const gherkin = await screen.findByLabelText('Xray scenario 1 Gherkin');
     await userEvent.click(screen.getByRole('button', { name: 'Polish Gherkin for scenario 1' }));
@@ -278,7 +293,7 @@ describe('App', () => {
 
     render(<App />);
     await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Polish summary for scenario 1' }));
 
     expect(await screen.findByRole('dialog', { name: 'Review AI suggestion' })).toHaveTextContent(
@@ -301,7 +316,7 @@ describe('App', () => {
       screen.getByLabelText('Miro board ID or URL'),
       'https://evilmiro.com/app/board/not-a-miro-board/'
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch sticky notes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -309,5 +324,22 @@ describe('App', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       '/api/miro/sticky-notes?boardId=https%3A%2F%2Fevilmiro.com%2Fapp%2Fboard%2Fnot-a-miro-board%2F'
     );
+  });
+
+  it('shows a scroll-to-top action after the page is scrolled', async () => {
+    render(<App />);
+
+    expect(screen.queryByRole('button', { name: 'Back to top' })).not.toBeInTheDocument();
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 500 });
+    fireEvent.scroll(window);
+
+    const backToTop = screen.getByRole('button', { name: 'Back to top' });
+    expect(backToTop).toBeInTheDocument();
+
+    const scrollTo = vi.fn();
+    Object.defineProperty(window, 'scrollTo', { configurable: true, value: scrollTo });
+    await userEvent.click(backToTop);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 });
