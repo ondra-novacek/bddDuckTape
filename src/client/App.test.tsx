@@ -160,14 +160,12 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('1 test added to LW1-28042');
     });
-    expect(screen.getByRole('link', { name: 'Open Test Set in Jira' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'LW1-28042' })).toHaveAttribute(
       'href',
       'https://levelworks.atlassian.net/browse/LW1-28042'
     );
-    expect(screen.getByRole('link', { name: 'PROJ-1' })).toHaveAttribute(
-      'href',
-      'https://levelworks.atlassian.net/browse/PROJ-1'
-    );
+    expect(screen.queryByRole('link', { name: 'Open Test Set in Jira' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'PROJ-1' })).not.toBeInTheDocument();
 
   });
 
@@ -295,6 +293,53 @@ describe('App', () => {
     });
     expect(screen.getByLabelText('Xray scenario 1 header')).toHaveValue('Existing title');
     expect(screen.queryByRole('button', { name: /Fill .*missing header/ })).not.toBeInTheDocument();
+  });
+
+  it('hides the imported missing-summary error after AI fills the header', async () => {
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/miro/sticky-notes?boardId=board-123') {
+        return new Response(
+          JSON.stringify({
+            boardId: 'board-123',
+            count: 1,
+            groupCount: 1,
+            notes: [],
+            groups: [
+              {
+                header: {
+                  id: 'note-1', content: '<p>Login</p>', plainText: 'Login', fillColor: 'blue', position: { x: 1, y: 2 }
+                },
+                items: [
+                  {
+                    id: 'note-2', content: '<p>Scenario</p>', plainText: 'Given an active customer', fillColor: 'green', position: { x: 1, y: 100 }
+                  }
+                ]
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (target === '/api/ai/polish' && init?.method === 'POST') {
+        return new Response(JSON.stringify({ proposal: 'Customer login' }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify({ error: 'unexpected url' }), { status: 500 });
+    }) as typeof fetch;
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
+
+    expect(await screen.findByText('Add a summary on the first line.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Fill 1 missing header' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Xray scenario 1 header')).toHaveValue('Customer login');
+    });
+    expect(screen.queryByText('Add a summary on the first line.')).not.toBeInTheDocument();
   });
 
   it('shows an AI error above the scenario list', async () => {

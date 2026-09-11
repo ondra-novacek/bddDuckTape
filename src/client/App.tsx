@@ -62,6 +62,20 @@ function extractMiroBoardId(value: string): string {
   }
 }
 
+function validateXrayScenario(summary: string, gherkin: string): string[] {
+  const errors: string[] = [];
+
+  if (!summary.trim()) {
+    errors.push('Add a summary in the header field.');
+  }
+
+  if (!gherkin.trim()) {
+    errors.push('Add Gherkin in the free-form text field.');
+  }
+
+  return errors;
+}
+
 export function App() {
   const [boardId, setBoardId] = useState('');
   const [xrayScenarios, setXrayScenarios] = useState<ParsedXrayScenario[]>([]);
@@ -128,17 +142,7 @@ export function App() {
 
         const summary = field === 'summary' ? value : scenario.summary;
         const gherkin = field === 'gherkin' ? value : scenario.gherkin;
-        const errors: string[] = [];
-
-        if (!summary.trim()) {
-          errors.push('Add a summary in the header field.');
-        }
-
-        if (!gherkin.trim()) {
-          errors.push('Add Gherkin in the free-form text field.');
-        }
-
-        return { ...scenario, summary, gherkin, errors };
+        return { ...scenario, summary, gherkin, errors: validateXrayScenario(summary, gherkin) };
       })
     );
     setCreatedTests([]);
@@ -293,7 +297,7 @@ export function App() {
         currentScenarios.map((scenario) => {
           const summary = !scenario.summary.trim() ? successfulSuggestions.get(scenario.sourceId) : undefined;
           return summary
-            ? { ...scenario, summary, errors: scenario.errors.filter((error) => error !== 'Add a summary in the header field.') }
+            ? { ...scenario, summary, errors: validateXrayScenario(summary, scenario.gherkin) }
             : scenario;
         })
       );
@@ -414,20 +418,6 @@ export function App() {
                   ) : (
                     createdTestSet.key
                   )}
-                </p>
-                {createdTestSet.url ? (
-                  <a className="testSetLink" href={createdTestSet.url} target="_blank" rel="noreferrer">
-                    Open Test Set in Jira <span aria-hidden="true">↗</span>
-                  </a>
-                ) : null}
-                <p className="createdTestLinks">
-                  Created tests:{' '}
-                  {createdTests.map((test, index) => (
-                    <span key={test.issueId}>
-                      {index > 0 ? ', ' : ''}
-                      {test.url ? <a href={test.url} target="_blank" rel="noreferrer">{test.key}</a> : test.key}
-                    </span>
-                  ))}
                 </p>
                 <p className="duplicateWarning">Submitting again creates duplicate tests.</p>
               </div>

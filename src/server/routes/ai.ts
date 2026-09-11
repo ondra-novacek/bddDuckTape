@@ -40,7 +40,7 @@ export function createAiRouter(config: AppConfig, polisher: AiPolisher = polishS
 
     try {
       const proposal = await polisher(
-        { apiKey: config.geminiApiKey, model: 'gemini-3.5-flash' },
+        { apiKey: config.geminiApiKey, model: 'gemini-3.5-flash-lite' },
         { field: body.field, summary: body.summary, gherkin: body.gherkin }
       );
       res.json({ proposal });

@@ -19,7 +19,7 @@ describe('AI routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ proposal: 'Successful customer login' });
     expect(polisher).toHaveBeenCalledWith(
-      { apiKey: 'gemini-key', model: 'gemini-3.5-flash' },
+      { apiKey: 'gemini-key', model: 'gemini-3.5-flash-lite' },
       {
         field: 'summary',
         summary: '',
