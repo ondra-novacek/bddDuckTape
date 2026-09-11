@@ -33,6 +33,31 @@ describe('polishScenarioField', () => {
     );
   });
 
+  it('instructs Gemini to repair invalid Gherkin syntax without changing the behaviour', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"proposal":"Scenario: customer signs in\\n  Given an active customer\\n  When they submit valid credentials\\n  Then access is granted"}' }] } }] }),
+        { status: 200 }
+      )
+    ) as typeof fetch;
+
+    await polishScenarioField(
+      { apiKey: 'gemini-key' },
+      {
+        field: 'gherkin',
+        summary: 'Customer sign in',
+        gherkin: 'Scenario customer signs in\nGiven an active customer\nWhen they submit valid credentials\nThen access is granted'
+      }
+    );
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining('Repair invalid Gherkin syntax while preserving the scenario\'s behaviour.')
+      })
+    );
+  });
+
   it('retries once after a temporary Gemini capacity error', async () => {
     globalThis.fetch = vi
       .fn()
