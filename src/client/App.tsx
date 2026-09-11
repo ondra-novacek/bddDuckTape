@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flattenGroupsForXray, type ParsedXrayScenario } from '../shared/xrayScenarios';
 
 interface StickyNote {
@@ -72,6 +72,8 @@ export function App() {
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [aiError, setAiError] = useState('');
   const [polishingField, setPolishingField] = useState<string | null>(null);
+  const [scenarioToFocus, setScenarioToFocus] = useState<string | null>(null);
+  const nextManualScenarioId = useRef(0);
 
   const hasInvalidXrayScenario = xrayScenarios.some((scenario) => scenario.errors.length > 0);
   const canSubmitToJira = xrayScenarios.length > 0 && !hasInvalidXrayScenario && !isExporting;
@@ -162,6 +164,22 @@ export function App() {
     setXrayStatus('Not exported');
   }
 
+  function addXrayScenario() {
+    const sourceId = `manual-${Date.now()}-${nextManualScenarioId.current++}`;
+    setXrayScenarios((currentScenarios) => [
+      ...currentScenarios,
+      {
+        sourceId,
+        summary: '',
+        gherkin: '',
+        errors: ['Add a summary in the header field.', 'Add Gherkin in the free-form text field.']
+      }
+    ]);
+    setScenarioToFocus(sourceId);
+    setCreatedTests([]);
+    setXrayStatus('Not exported');
+  }
+
   useEffect(() => {
     if (!aiSuggestion) return;
 
@@ -192,6 +210,13 @@ export function App() {
       window.removeEventListener('keydown', closeMenuOnEscape);
     };
   }, [openScenarioMenu]);
+
+  useEffect(() => {
+    if (!scenarioToFocus) return;
+
+    document.getElementById(`scenario-${scenarioToFocus}-summary`)?.focus();
+    setScenarioToFocus(null);
+  }, [scenarioToFocus, xrayScenarios]);
 
   useEffect(() => {
     function updateBackToTopVisibility() {
@@ -438,6 +463,15 @@ export function App() {
               </li>
             ))}
           </ol>
+          <button
+            type="button"
+            className="scenarioAction addScenarioAction"
+            aria-label="Add scenario"
+            title="Add scenario"
+            onClick={addXrayScenario}
+          >
+            +
+          </button>
           {aiError ? <p className="notice noticeError" role="alert">{aiError}</p> : null}
 
           {createdTests.length > 0 ? (

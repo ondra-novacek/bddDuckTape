@@ -182,6 +182,53 @@ describe('App', () => {
     );
   });
 
+  it('appends a blank scenario from the add scenario control', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          boardId: 'board-123',
+          count: 1,
+          groupCount: 1,
+          notes: [],
+          groups: [
+            {
+              header: {
+                id: 'note-1',
+                content: '<p>Login</p>',
+                plainText: 'Login',
+                fillColor: 'blue',
+                position: { x: 1, y: 2 }
+              },
+              items: [
+                {
+                  id: 'note-2',
+                  content: '<p>Scenario</p>',
+                  plainText: 'Customer login\nScenario: customer logs in',
+                  fillColor: 'green',
+                  position: { x: 1, y: 100 }
+                }
+              ]
+            }
+          ]
+        }),
+        { status: 200 }
+      );
+    }) as typeof fetch;
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Miro board ID or URL'), 'board-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch notes' }));
+
+    await screen.findByLabelText('Xray scenario 1 header');
+    await userEvent.click(screen.getByRole('button', { name: 'Add scenario' }));
+
+    const newSummary = screen.getByLabelText('Xray scenario 2 header');
+    expect(newSummary).toHaveValue('');
+    expect(screen.getByLabelText('Xray scenario 2 Gherkin')).toHaveValue('');
+    expect(newSummary).toHaveFocus();
+    expect(screen.getByText('Add a summary in the header field. Add Gherkin in the free-form text field.')).toBeInTheDocument();
+  });
+
   it('shows only changed Gherkin lines with diff colors before applying an AI suggestion', async () => {
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const target = String(url);
