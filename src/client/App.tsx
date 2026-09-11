@@ -67,7 +67,6 @@ export function App() {
   const [createdTests, setCreatedTests] = useState<CreatedXrayTest[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isJiraModalOpen, setIsJiraModalOpen] = useState(false);
-  const [openScenarioMenu, setOpenScenarioMenu] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [aiError, setAiError] = useState('');
@@ -140,7 +139,6 @@ export function App() {
     setXrayScenarios((currentScenarios) =>
       currentScenarios.filter((scenario) => scenario.sourceId !== sourceId)
     );
-    setOpenScenarioMenu(null);
     setCreatedTests([]);
     setXrayStatus('Not exported');
   }
@@ -190,26 +188,6 @@ export function App() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [aiSuggestion]);
-
-  useEffect(() => {
-    if (!openScenarioMenu) return;
-
-    function closeMenuOnOutsideClick(event: PointerEvent) {
-      if (event.target instanceof Element && event.target.closest('[data-scenario-options]')) return;
-      setOpenScenarioMenu(null);
-    }
-
-    function closeMenuOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpenScenarioMenu(null);
-    }
-
-    window.addEventListener('pointerdown', closeMenuOnOutsideClick);
-    window.addEventListener('keydown', closeMenuOnEscape);
-    return () => {
-      window.removeEventListener('pointerdown', closeMenuOnOutsideClick);
-      window.removeEventListener('keydown', closeMenuOnEscape);
-    };
-  }, [openScenarioMenu]);
 
   useEffect(() => {
     if (!scenarioToFocus) return;
@@ -358,10 +336,11 @@ export function App() {
           </div>
           <ol className="scenarioPreview">
             {xrayScenarios.map((scenario, index) => (
-              <li key={scenario.sourceId}>
+              <li key={scenario.sourceId} className="scenarioCard">
                 <div className="scenarioHeader">
                   <label htmlFor={`scenario-${scenario.sourceId}-summary`}>
-                    Scenario {index + 1} header
+                    <span className="scenarioIndex" aria-hidden="true">{index + 1}</span>
+                    <span>Scenario header</span>
                   </label>
                   <div className="scenarioActions">
                     <button
@@ -384,33 +363,15 @@ export function App() {
                     >
                       ↓
                     </button>
-                    <div className="scenarioOptions" data-scenario-options>
-                      <button
-                        type="button"
-                        className="scenarioAction"
-                        aria-label={`Scenario ${index + 1} options`}
-                        aria-haspopup="menu"
-                        aria-expanded={openScenarioMenu === scenario.sourceId}
-                        onClick={() =>
-                          setOpenScenarioMenu((currentMenu) =>
-                            currentMenu === scenario.sourceId ? null : scenario.sourceId
-                          )
-                        }
-                      >
-                        ⋯
-                      </button>
-                      {openScenarioMenu === scenario.sourceId ? (
-                        <div className="scenarioMenu" role="menu">
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => deleteXrayScenario(scenario.sourceId)}
-                          >
-                            Delete scenario
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
+                    <button
+                      type="button"
+                      className="scenarioAction deleteScenarioAction"
+                    aria-label={`Delete scenario ${index + 1}`}
+                    title="Delete scenario"
+                    onClick={() => deleteXrayScenario(scenario.sourceId)}
+                  >
+                      <span className="deleteScenarioGlyph">×</span>
+                    </button>
                   </div>
                 </div>
                 <div className="fieldWithAiAction">

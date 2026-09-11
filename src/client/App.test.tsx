@@ -112,13 +112,14 @@ describe('App', () => {
 
     expect(await screen.findByLabelText('Xray scenario 1 header')).toHaveValue('Successful login');
     expect(screen.getByLabelText('Xray scenario 2 header')).toHaveValue('Unsuccessful login');
+    expect(screen.getByLabelText('Xray scenario 1 header').closest('li')).toHaveClass('scenarioCard');
+    expect(screen.getByText('1', { selector: '.scenarioIndex' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Move scenario 2 up' }));
     expect(screen.getByLabelText('Xray scenario 1 header')).toHaveValue('Unsuccessful login');
     expect(screen.getByLabelText('Xray scenario 2 header')).toHaveValue('Successful login');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Scenario 1 options' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Delete scenario' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete scenario 1' }));
 
     const headerEditor = screen.getByLabelText('Xray scenario 1 header');
     const gherkinEditor = screen.getByLabelText('Xray scenario 1 Gherkin');
