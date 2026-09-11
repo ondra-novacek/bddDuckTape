@@ -68,7 +68,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .modalHeader, .modalActions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .modalHeader h2, .aiReviewModal p { margin: 0; }
 .jiraSubmitModal label { font-size: 14px; font-weight: 700; }
-.jiraSubmitModal input, .jiraSubmitModal .notice { width: 100%; }
+.jiraSubmitModal input { width: 100%; }
+.jiraSubmitModal .notice { width: 100%; box-sizing: border-box; }
 .closeModal { width: 36px; height: 36px; padding: 0; background: #edf1f7; color: #344054; font-size: 24px; }
 .closeModal:hover:not(:disabled) { background: #dde4ee; }
 .modalActions { justify-content: flex-end; }
