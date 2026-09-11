@@ -29,6 +29,12 @@ interface CreatedXrayTest {
   sourceId: string;
   issueId: string;
   key: string;
+  url?: string;
+}
+
+interface JiraIssueLink {
+  key: string;
+  url?: string;
 }
 
 type ScenarioField = 'summary' | 'gherkin';
@@ -62,9 +68,9 @@ export function App() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [testSetKey, setTestSetKey] = useState('');
-  const [xrayStatus, setXrayStatus] = useState('Not exported');
   const [xrayError, setXrayError] = useState('');
   const [createdTests, setCreatedTests] = useState<CreatedXrayTest[]>([]);
+  const [createdTestSet, setCreatedTestSet] = useState<JiraIssueLink | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isJiraModalOpen, setIsJiraModalOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -98,7 +104,7 @@ export function App() {
       setXrayScenarios(flattenGroupsForXray(result.groups));
       setXrayError('');
       setCreatedTests([]);
-      setXrayStatus('Not exported');
+      setCreatedTestSet(null);
     } catch (fetchError) {
       setXrayScenarios([]);
       setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch sticky notes');
@@ -132,7 +138,7 @@ export function App() {
       })
     );
     setCreatedTests([]);
-    setXrayStatus('Not exported');
+    setCreatedTestSet(null);
   }
 
   function deleteXrayScenario(sourceId: string) {
@@ -140,7 +146,7 @@ export function App() {
       currentScenarios.filter((scenario) => scenario.sourceId !== sourceId)
     );
     setCreatedTests([]);
-    setXrayStatus('Not exported');
+    setCreatedTestSet(null);
   }
 
   function moveXrayScenario(sourceId: string, direction: -1 | 1) {
@@ -159,7 +165,7 @@ export function App() {
       return reorderedScenarios;
     });
     setCreatedTests([]);
-    setXrayStatus('Not exported');
+    setCreatedTestSet(null);
   }
 
   function addXrayScenario() {
@@ -175,7 +181,7 @@ export function App() {
     ]);
     setScenarioToFocus(sourceId);
     setCreatedTests([]);
-    setXrayStatus('Not exported');
+    setCreatedTestSet(null);
   }
 
   useEffect(() => {
@@ -256,7 +262,7 @@ export function App() {
     setIsExporting(true);
     setXrayError('');
     setCreatedTests([]);
-    setXrayStatus('Creating Xray Tests');
+    setCreatedTestSet(null);
 
     try {
       const response = await fetch('/api/xray/tests', {
@@ -272,22 +278,19 @@ export function App() {
         })
       });
       const body = (await response.json()) as
-        | { created: CreatedXrayTest[]; warnings: string[] }
+        | { testSet: JiraIssueLink; created: CreatedXrayTest[]; warnings: string[] }
         | { error?: string };
 
       if (!response.ok) {
         throw new Error('error' in body && body.error ? body.error : 'Xray export failed');
       }
 
-      const result = body as { created: CreatedXrayTest[]; warnings: string[] };
+      const result = body as { testSet: JiraIssueLink; created: CreatedXrayTest[]; warnings: string[] };
       setCreatedTests(result.created);
-      setXrayStatus(
-        `Created ${result.created.length} ${result.created.length === 1 ? 'Xray Test' : 'Xray Tests'}`
-      );
+      setCreatedTestSet(result.testSet);
       setIsJiraModalOpen(false);
     } catch (exportError) {
       setXrayError(exportError instanceof Error ? exportError.message : 'Xray export failed');
-      setXrayStatus('Xray export failed');
     } finally {
       setIsExporting(false);
     }
@@ -322,7 +325,6 @@ export function App() {
       {xrayScenarios.length > 0 ? (
         <section className="xrayPanel" aria-label="Xray scenarios">
           <div className="previewActions">
-            {createdTests.length > 0 ? <p className="exportSuccess">{xrayStatus}</p> : null}
             <button
               type="button"
               disabled={!canSubmitToJira}
@@ -334,6 +336,36 @@ export function App() {
               Submit to Jira
             </button>
           </div>
+          {createdTests.length > 0 && createdTestSet ? (
+            <section className="exportSuccess" role="status" aria-live="polite">
+              <span className="successIcon" aria-hidden="true">✓</span>
+              <div className="successContent">
+                <p>
+                  {createdTests.length} {createdTests.length === 1 ? 'test' : 'tests'} added to{' '}
+                  {createdTestSet.url ? (
+                    <a href={createdTestSet.url} target="_blank" rel="noreferrer">{createdTestSet.key}</a>
+                  ) : (
+                    createdTestSet.key
+                  )}
+                </p>
+                {createdTestSet.url ? (
+                  <a className="testSetLink" href={createdTestSet.url} target="_blank" rel="noreferrer">
+                    Open Test Set in Jira <span aria-hidden="true">↗</span>
+                  </a>
+                ) : null}
+                <p className="createdTestLinks">
+                  Created tests:{' '}
+                  {createdTests.map((test, index) => (
+                    <span key={test.issueId}>
+                      {index > 0 ? ', ' : ''}
+                      {test.url ? <a href={test.url} target="_blank" rel="noreferrer">{test.key}</a> : test.key}
+                    </span>
+                  ))}
+                </p>
+                <p className="duplicateWarning">Submitting again creates duplicate tests.</p>
+              </div>
+            </section>
+          ) : null}
           <ol className="scenarioPreview">
             {xrayScenarios.map((scenario, index) => (
               <li key={scenario.sourceId} className="scenarioCard">
@@ -435,13 +467,6 @@ export function App() {
           </button>
           {aiError ? <p className="notice noticeError" role="alert">{aiError}</p> : null}
 
-          {createdTests.length > 0 ? (
-            <ul className="createdTests">
-              {createdTests.map((test) => (
-                <li key={test.issueId}>{test.key}</li>
-              ))}
-            </ul>
-          ) : null}
         </section>
       ) : null}
       {isJiraModalOpen ? (

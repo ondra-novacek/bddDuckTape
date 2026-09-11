@@ -92,7 +92,18 @@ describe('App', () => {
 
         return new Response(
           JSON.stringify({
-            created: [{ sourceId: 'note-2', issueId: '10001', key: 'PROJ-1' }],
+            testSet: {
+              key: 'LW1-28042',
+              url: 'https://levelworks.atlassian.net/browse/LW1-28042'
+            },
+            created: [
+              {
+                sourceId: 'note-2',
+                issueId: '10001',
+                key: 'PROJ-1',
+                url: 'https://levelworks.atlassian.net/browse/PROJ-1'
+              }
+            ],
             warnings: []
           }),
           { status: 200 }
@@ -147,9 +158,16 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Submit tests' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Created 1 Xray Test')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('1 test added to LW1-28042');
     });
-    expect(screen.getByText('PROJ-1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Test Set in Jira' })).toHaveAttribute(
+      'href',
+      'https://levelworks.atlassian.net/browse/LW1-28042'
+    );
+    expect(screen.getByRole('link', { name: 'PROJ-1' })).toHaveAttribute(
+      'href',
+      'https://levelworks.atlassian.net/browse/PROJ-1'
+    );
 
   });
 

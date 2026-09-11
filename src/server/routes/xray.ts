@@ -77,7 +77,21 @@ export function createXrayRouter(
           }))
         }
       );
-      res.json(result);
+      const jiraBaseUrl = config.jiraBaseUrl?.replace(/\/$/, '');
+      const jiraIssueUrl = (issueKey: string) =>
+        jiraBaseUrl ? `${jiraBaseUrl}/browse/${issueKey}` : undefined;
+
+      res.json({
+        ...result,
+        testSet: {
+          key: testSetKey,
+          url: jiraIssueUrl(testSetKey)
+        },
+        created: result.created.map((test) => ({
+          ...test,
+          url: jiraIssueUrl(test.key)
+        }))
+      });
     } catch (error) {
       if (error instanceof XrayApiError) {
         res.status(error.status).json({

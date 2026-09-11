@@ -57,7 +57,7 @@ describe('Xray routes', () => {
     expect(response.body.error).toBe('Provide a Jira issue key or Jira issue URL for the Xray Test Set.');
   });
 
-  it('exports valid scenarios through the injected exporter', async () => {
+  it('returns Jira links for the destination Test Set and created Tests', async () => {
     const exporter = vi.fn().mockResolvedValue({
       created: [{ sourceId: 'note-1', issueId: '10001', key: 'PROJ-1' }],
       warnings: []
@@ -85,7 +85,18 @@ describe('Xray routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      created: [{ sourceId: 'note-1', issueId: '10001', key: 'PROJ-1' }],
+      testSet: {
+        key: 'LW1-28042',
+        url: 'https://levelworks.atlassian.net/browse/LW1-28042'
+      },
+      created: [
+        {
+          sourceId: 'note-1',
+          issueId: '10001',
+          key: 'PROJ-1',
+          url: 'https://levelworks.atlassian.net/browse/PROJ-1'
+        }
+      ],
       warnings: []
     });
     expect(exporter).toHaveBeenCalledWith(
